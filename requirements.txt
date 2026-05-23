@@ -1,0 +1,8 @@
+# Core Dependencies
+numpy>=2.0.2
+opencv-python>=4.13.0.92
+makcu>=2.3.1
+
+# NDI Connection Wrapper (choose one, ndi-python is recommended)
+ndi-python>=1.0.0
+# cyndilib>=0.0.9
