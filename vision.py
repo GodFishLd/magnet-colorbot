@@ -9,8 +9,7 @@ class Vision:
         self.upper = color_range["upper"]
 
     def process(self, frame):
-        img = frame.reshape((self.grabzone, self.grabzone, 4))
-        bgr = img[:, :, :3]
+        bgr = frame
 
         hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(hsv, self.lower, self.upper)
