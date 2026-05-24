@@ -22,7 +22,7 @@ class Colorbot:
 
         self.vision = Vision(grabzone, y_offset=y_offset)
         self.mouse = PicoMouse()
-        self.sender = Sender(self.state, self.mouse, res=res, sensitivity=sensitivity, smoothing=smoothing, mode=mode, grabber=self.grabber)
+        self.sender = Sender(self.state, self.mouse, res=res, sensitivity=sensitivity, smoothing=smoothing, mode=mode, grabber=self.grabber, trigger_key=trigger_key)
 
         self.running = False
         self.last_left = False

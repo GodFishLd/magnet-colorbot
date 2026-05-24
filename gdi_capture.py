@@ -90,7 +90,7 @@ class NDIScreenCapture:
                 if t == ndi.FRAME_TYPE_VIDEO:
                     img = np.copy(v.data)
                     img = img.reshape((v.yres, v.xres, 4))
-                    img = img[::-1, :, :3]  # Flip vertically and discard alpha channel
+                    img = img[:, :, :3]  # Discard alpha channel
 
                     h, w = img.shape[:2]
                     self.width = w
@@ -125,7 +125,7 @@ class NDIScreenCapture:
                 img = np.asarray(frame.data)
 
                 if img.shape[-1] >= 3:
-                    img = img[::-1, :, :3]  # Flip vertically and discard alpha channel
+                    img = img[:, :, :3]  # Discard alpha channel
 
                 h, w = img.shape[:2]
                 self.width = w

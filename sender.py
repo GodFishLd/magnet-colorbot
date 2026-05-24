@@ -3,7 +3,7 @@ import time
 
 class Sender:
 
-    def __init__(self, state, mouse, res, sensitivity=1.0, smoothing=0.5, mode=2, grabber=None):
+    def __init__(self, state, mouse, res, sensitivity=1.0, smoothing=0.5, mode=2, grabber=None, trigger_key="0x01"):
         self.state = state
         self.mouse = mouse
         self.running = True
@@ -12,6 +12,7 @@ class Sender:
         self.smoothing = smoothing
         self.mode = mode
         self.grabber = grabber
+        self.trigger_key = trigger_key
 
     def run(self):
         last_x = 0.0
@@ -90,6 +91,14 @@ class Sender:
                     
                 # Deliver movement
                 self.mouse.move(mx, my)
+                
+                # If trigger key is not left click (e.g. it is Auto, Shift, or Right Click),
+                # the bot must handle the shooting itself. We add a short delay to let the
+                # mouse arrive before clicking.
+                if self.trigger_key != "0x01":
+                    time.sleep(0.005)
+                    self.mouse.click()
+                
                 moved = True
 
             # 2. Tracking/Aim Assist Mode (Mode 2 & 3)
