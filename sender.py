@@ -37,18 +37,14 @@ class Sender:
                 self.state.magnet_fire = False
 
             # Scale target movements based on game sensitivity, resolution, and smoothing
-            v_x = dx * sensitivity_x * self.smoothing
-            v_y = dy * sensitivity_y * self.smoothing
+            last_x = dx * sensitivity_x * self.smoothing
+            last_y = dy * sensitivity_y * self.smoothing
 
-            alpha = 0.4
-
-            last_x = last_x * (1 - alpha) + v_x * alpha
-            last_y = last_y * (1 - alpha) + v_y * alpha
-
-            if abs(last_x) < 0.5:
-                last_x = 0
-            if abs(last_y) < 0.5:
-                last_y = 0
+            # Clamp sub-pixel movements to at least 1 pixel to prevent truncation to 0
+            if last_x != 0 and abs(last_x) < 1.0:
+                last_x = 1.05 if last_x > 0 else -1.05
+            if last_y != 0 and abs(last_y) < 1.0:
+                last_y = 1.05 if last_y > 0 else -1.05
 
             if fire:
                 now = time.time()
