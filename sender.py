@@ -3,7 +3,7 @@ import time
 
 class Sender:
 
-    def __init__(self, state, mouse, res, sensitivity=1.0, smoothing=0.5, mode=2):
+    def __init__(self, state, mouse, res, sensitivity=1.0, smoothing=0.5, mode=2, grabber=None):
         self.state = state
         self.mouse = mouse
         self.running = True
@@ -11,6 +11,7 @@ class Sender:
         self.sensitivity = sensitivity
         self.smoothing = smoothing
         self.mode = mode
+        self.grabber = grabber
 
     def run(self):
         last_x = 0.0
@@ -18,14 +19,15 @@ class Sender:
         tick = 0.007
 
         # Calculate sensitivity coefficients (scaling based on in-game sensitivity and resolution)
-        import ctypes
-        res_w = ctypes.windll.user32.GetSystemMetrics(0)
-        res_h = ctypes.windll.user32.GetSystemMetrics(1)
-        if res_w == 0 or res_h == 0:
-            res_w, res_h = self.res
+        res_w, res_h = self.res
+        if self.grabber is not None:
+            res_w = self.grabber.width
+            res_h = self.grabber.height
+        
+        print(f"[Sender] Scaling using NDI stream resolution: {res_w}x{res_h}")
 
-        sensitivity_x = 1.0 / self.sensitivity / (res_w / 1920.0) * 1.08
-        sensitivity_y = 1.0 / self.sensitivity / (res_h / 1080.0) * 1.08
+        sensitivity_x = (1.0 / self.sensitivity) * (1920.0 / res_w) * 1.08
+        sensitivity_y = (1.0 / self.sensitivity) * (1080.0 / res_h) * 1.08
 
         left_start = None
 
@@ -69,9 +71,11 @@ class Sender:
 
             # 1. Flick Mode (Mode 1 & 3)
             if fire and (self.mode & 1) > 0 and has_target:
+                # Direct C++ translation for instantaneous correction scaling
                 mx = dx * sensitivity_x
                 my = dy * sensitivity_y
                 
+                # Check for minimum registered step size
                 if mx != 0 and abs(mx) < 1.0:
                     mx = 1.05 if mx > 0 else -1.05
                 if my != 0 and abs(my) < 1.0:
@@ -84,8 +88,8 @@ class Sender:
                     print(f"[Sender] Mode {self.mode} Flick -> move(dx={mx:.1f}, dy={my:.1f}), click()")
                     self.last_log_time = now
                     
+                # Deliver movement
                 self.mouse.move(mx, my)
-                self.mouse.click()
                 moved = True
 
             # 2. Tracking/Aim Assist Mode (Mode 2 & 3)

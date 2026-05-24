@@ -20,9 +20,9 @@ class Colorbot:
             grabzone
         )
 
-        self.vision = Vision(grabzone, color_range, y_offset=y_offset)
+        self.vision = Vision(grabzone, y_offset=y_offset)
         self.mouse = PicoMouse()
-        self.sender = Sender(self.state, self.mouse, res=res, sensitivity=sensitivity, smoothing=smoothing, mode=mode)
+        self.sender = Sender(self.state, self.mouse, res=res, sensitivity=sensitivity, smoothing=smoothing, mode=mode, grabber=self.grabber)
 
         self.running = False
         self.last_left = False
@@ -138,6 +138,6 @@ class Colorbot:
                         avg_h = hsv[:, :, 0].mean()
                         avg_s = hsv[:, :, 1].mean()
                         avg_v = hsv[:, :, 2].mean()
-                        print(f"[Debug] Click detected! No target found. Avg HSV in grabzone: H={avg_h:.1f}, S={avg_s:.1f}, V={avg_v:.1f}. Target range: Lower={self.vision.lower}, Upper={self.vision.upper}")
+                        print(f"[Debug] Click detected! No target found. Avg HSV in grabzone: H={avg_h:.1f}, S={avg_s:.1f}, V={avg_v:.1f}")
 
             time.sleep(0.001)

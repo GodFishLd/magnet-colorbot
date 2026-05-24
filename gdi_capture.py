@@ -30,6 +30,8 @@ class NDIScreenCapture:
         self.running = True
         self.ndi_source_name = ndi_source_name
         self.frame_counter = 0
+        self.width = 1920
+        self.height = 1080
 
         if NDI_BACKEND == "ndi-python":
             recv_create = ndi.RecvCreateV3()
@@ -91,6 +93,8 @@ class NDIScreenCapture:
                     img = img[::-1, :, :3]  # Flip vertically and discard alpha channel
 
                     h, w = img.shape[:2]
+                    self.width = w
+                    self.height = h
                     cx, cy = w // 2, h // 2
                     g = self.grabzone // 2
 
@@ -124,6 +128,8 @@ class NDIScreenCapture:
                     img = img[::-1, :, :3]  # Flip vertically and discard alpha channel
 
                 h, w = img.shape[:2]
+                self.width = w
+                self.height = h
                 cx, cy = w // 2, h // 2
                 g = self.grabzone // 2
 

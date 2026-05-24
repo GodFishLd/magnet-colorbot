@@ -1,19 +1,26 @@
 import cv2
+import numpy as np
 
 
 class Vision:
 
-    def __init__(self, grabzone, color_range, y_offset=9):
+    def __init__(self, grabzone, y_offset=9):
         self.grabzone = grabzone
-        self.lower = color_range["lower"]
-        self.upper = color_range["upper"]
         self.y_offset = y_offset
 
     def process(self, frame):
         bgr = frame
 
-        hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
-        mask = cv2.inRange(hsv, self.lower, self.upper)
+        # Vectorized translation of C++ is_color logic
+        b = bgr[:, :, 0].astype(np.int32)
+        g = bgr[:, :, 1].astype(np.int32)
+        r = bgr[:, :, 2].astype(np.int32)
+
+        g_filter = g < 190
+        cond_high_g = (g >= 140) & (np.abs(r - b) <= 8) & (r - g >= 50) & (b - g >= 50) & (r >= 105) & (b >= 105)
+        cond_low_g = (g < 140) & (np.abs(r - b) <= 13) & (r - g >= 60) & (b - g >= 60) & (r >= 110) & (b >= 100)
+
+        mask = (g_filter & (cond_high_g | cond_low_g)).astype(np.uint8) * 255
         mask = cv2.dilate(mask, None, iterations=5)
 
         contours, _ = cv2.findContours(
