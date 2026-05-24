@@ -39,7 +39,6 @@ class Sender:
                 last_y = 0
 
             if fire:
-                import time
                 now = time.time()
                 if not hasattr(self, 'last_log_time'):
                     self.last_log_time = 0
