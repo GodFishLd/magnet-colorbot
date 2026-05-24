@@ -44,6 +44,22 @@ class PicoMouse:
             return
         self.controller.click(button)
 
+    def press(self, button=MouseButton.LEFT):
+        if self.simulated:
+            return
+        try:
+            self.controller.press(button)
+        except Exception as e:
+            print(f"[-] PicoMouse: Failed to press button ({e})")
+
+    def release(self, button=MouseButton.LEFT):
+        if self.simulated:
+            return
+        try:
+            self.controller.release(button)
+        except Exception as e:
+            print(f"[-] PicoMouse: Failed to release button ({e})")
+
     def is_pressed(self, button=MouseButton.LEFT):
         if self.simulated:
             return False

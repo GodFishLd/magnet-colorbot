@@ -31,6 +31,7 @@ class Sender:
         sensitivity_y = (1.0 / self.sensitivity) * (1080.0 / res_h) * 1.08
 
         left_start = None
+        was_left_down = False
 
         while self.running:
             start = time.perf_counter()
@@ -67,41 +68,50 @@ class Sender:
                 left_start = None
                 extra = 0.0
 
-            # Target position calculation
+            # Target position calculation and click state mirroring
             moved = False
 
-            # 1. Flick Mode (Mode 1 & 3)
-            if fire and (self.mode & 1) > 0 and has_target:
-                # Direct C++ translation for instantaneous correction scaling
-                mx = dx * sensitivity_x
-                my = dy * sensitivity_y
-                
-                # Check for minimum registered step size
-                if mx != 0 and abs(mx) < 1.0:
-                    mx = 1.05 if mx > 0 else -1.05
-                if my != 0 and abs(my) < 1.0:
-                    my = 1.05 if my > 0 else -1.05
-                    
-                now = time.time()
-                if not hasattr(self, 'last_log_time'):
-                    self.last_log_time = 0
-                if now - self.last_log_time >= 1.5:
-                    print(f"[Sender] Mode {self.mode} Flick -> move(dx={mx:.1f}, dy={my:.1f}), click()")
-                    self.last_log_time = now
-                    
-                # Deliver movement
-                self.mouse.move(mx, my)
-                
-                # If trigger key is not left click, or if left click is suppressed/locked
-                # at the firmware level, the bot must send the click command to fire.
-                if self.trigger_key != "0x01" or getattr(self.mouse, "left_locked", False):
-                    time.sleep(0.005)
-                    self.mouse.click()
-                
-                moved = True
+            # If Left Click is locked physically at the hardware layer, we must mirror
+            # click-down and click-up states virtually to PC1.
+            if getattr(self.mouse, "left_locked", False):
+                if left_click_down and not was_left_down:
+                    # User physically clicked down
+                    if fire and (self.mode & 1) > 0 and has_target:
+                        mx = dx * sensitivity_x
+                        my = dy * sensitivity_y
+                        if mx != 0 and abs(mx) < 1.0:
+                            mx = 1.05 if mx > 0 else -1.05
+                        if my != 0 and abs(my) < 1.0:
+                            my = 1.05 if my > 0 else -1.05
+
+                        self.mouse.move(mx, my)
+                        time.sleep(0.005)
+                        self.mouse.press()
+                        moved = True
+                    else:
+                        self.mouse.press()
+                elif not left_click_down and was_left_down:
+                    # User physically released click
+                    self.mouse.release()
+            else:
+                # Standard non-locked input flow (direct passthrough or simulated fallback)
+                if fire and (self.mode & 1) > 0 and has_target:
+                    mx = dx * sensitivity_x
+                    my = dy * sensitivity_y
+                    if mx != 0 and abs(mx) < 1.0:
+                        mx = 1.05 if mx > 0 else -1.05
+                    if my != 0 and abs(my) < 1.0:
+                        my = 1.05 if my > 0 else -1.05
+
+                    self.mouse.move(mx, my)
+                    if self.trigger_key != "0x01":
+                        time.sleep(0.005)
+                        self.mouse.click()
+                    moved = True
 
             # 2. Tracking/Aim Assist Mode (Mode 2 & 3)
-            elif (self.mode & 2) > 0 and trigger_active and has_target and not moved:
+            # Active when holding the trigger key and target is spotted
+            if (self.mode & 2) > 0 and trigger_active and has_target and not moved:
                 vx = dx * sensitivity_x * self.smoothing
                 vy = (dy + extra) * sensitivity_y * self.smoothing
 
@@ -119,5 +129,6 @@ class Sender:
 
                 self.mouse.move(vx, vy)
 
+            was_left_down = left_click_down
             elapsed = time.perf_counter() - start
             time.sleep(max(0, tick - elapsed))
