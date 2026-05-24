@@ -14,6 +14,38 @@ class Sender:
         self.grabber = grabber
         self.trigger_key = trigger_key
 
+    def is_left_click_down(self):
+        if not self.mouse.simulated:
+            from makcu import MouseButton
+            try:
+                return self.mouse.is_pressed(MouseButton.LEFT)
+            except AttributeError:
+                pass
+        import ctypes
+        return (ctypes.windll.user32.GetAsyncKeyState(0x01) & 0x8000) != 0
+
+    def is_trigger_active(self):
+        if self.trigger_key == "auto":
+            return True
+
+        try:
+            vk_code = int(self.trigger_key, 16) if self.trigger_key.startswith("0x") else int(self.trigger_key)
+        except ValueError:
+            vk_code = 0x01
+
+        if not self.mouse.simulated:
+            from makcu import MouseButton
+            if vk_code == 0x01:
+                return self.mouse.is_pressed(MouseButton.LEFT)
+            elif vk_code == 0x02:
+                try:
+                    return self.mouse.is_pressed(MouseButton.RIGHT)
+                except AttributeError:
+                    pass
+
+        import ctypes
+        return (ctypes.windll.user32.GetAsyncKeyState(vk_code) & 0x8000) != 0
+
     def run(self):
         last_x = 0.0
         last_y = 0.0
@@ -32,25 +64,37 @@ class Sender:
 
         left_start = None
         was_left_down = False
+        was_trigger_active = False
 
         while self.running:
             start = time.perf_counter()
 
+            # Poll mouse / trigger inputs directly at high frequency
+            left_click_down = self.is_left_click_down()
+            trigger_active = self.is_trigger_active()
+            is_new_click = trigger_active and not was_trigger_active
+
+            # Update shared state for external logging
+            with self.state.lock:
+                self.state.left_click_down = left_click_down
+                self.state.trigger_active = trigger_active
+
+            # Retrieve coordinates and target status from the vision thread
             dx = 0.0
             dy = 0.0
             has_target = False
-            trigger_active = False
-            left_click_down = False
-            fire = False
-
             with self.state.lock:
                 dx = self.state.dx
                 dy = self.state.dy
                 has_target = self.state.has_target
-                trigger_active = self.state.trigger_active
-                left_click_down = self.state.left_click_down
-                fire = self.state.magnet_fire
-                self.state.magnet_fire = False
+
+            # Determine flick-on-click trigger
+            fire = is_new_click and has_target
+
+            # Notify vision loop to print HSV debug values if user clicks but misses target
+            if is_new_click and not has_target:
+                with self.state.lock:
+                    self.state.click_pending = True
 
             # Recoil Control System (RCS)
             if left_click_down:
@@ -76,9 +120,9 @@ class Sender:
             if getattr(self.mouse, "left_locked", False):
                 if left_click_down and not was_left_down:
                     # User physically clicked down
-                    if fire and (self.mode & 1) > 0 and has_target:
-                        mx = dx * sensitivity_x
-                        my = dy * sensitivity_y
+                    if fire and (self.mode & 1) > 0:
+                        mx = dx * sensitivity_x * self.smoothing
+                        my = dy * sensitivity_y * self.smoothing
                         if mx != 0 and abs(mx) < 1.0:
                             mx = 1.05 if mx > 0 else -1.05
                         if my != 0 and abs(my) < 1.0:
@@ -95,9 +139,9 @@ class Sender:
                     self.mouse.release()
             else:
                 # Standard non-locked input flow (direct passthrough or simulated fallback)
-                if fire and (self.mode & 1) > 0 and has_target:
-                    mx = dx * sensitivity_x
-                    my = dy * sensitivity_y
+                if fire and (self.mode & 1) > 0:
+                    mx = dx * sensitivity_x * self.smoothing
+                    my = dy * sensitivity_y * self.smoothing
                     if mx != 0 and abs(mx) < 1.0:
                         mx = 1.05 if mx > 0 else -1.05
                     if my != 0 and abs(my) < 1.0:
@@ -130,5 +174,6 @@ class Sender:
                 self.mouse.move(vx, vy)
 
             was_left_down = left_click_down
+            was_trigger_active = trigger_active
             elapsed = time.perf_counter() - start
             time.sleep(max(0, tick - elapsed))

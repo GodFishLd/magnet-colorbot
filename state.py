@@ -12,3 +12,4 @@ class MagnetState:
         self.trigger_active = False
         self.left_click_down = False
         self.magnet_fire = False
+        self.click_pending = False

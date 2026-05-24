@@ -42,41 +42,6 @@ class Colorbot:
         threading.Thread(target=self.sender.run, daemon=True).start()
         print("[+] Colorbot threads successfully started!")
 
-    def is_trigger_active(self):
-        if self.trigger_key == "auto":
-            return True
-
-        try:
-            vk_code = int(self.trigger_key, 16) if self.trigger_key.startswith("0x") else int(self.trigger_key)
-        except ValueError:
-            vk_code = 0x01  # Default to Left Click
-
-        # If it's a left/right click, we can check the physical Pico mouse button state
-        # if the hardware is connected.
-        if not self.mouse.simulated:
-            from makcu import MouseButton
-            if vk_code == 0x01:
-                return self.mouse.is_pressed(MouseButton.LEFT)
-            elif vk_code == 0x02:
-                try:
-                    return self.mouse.is_pressed(MouseButton.RIGHT)
-                except AttributeError:
-                    pass
-
-        # Fallback to checking Windows virtual key state (works globally on Windows)
-        import ctypes
-        return (ctypes.windll.user32.GetAsyncKeyState(vk_code) & 0x8000) != 0
-
-    def is_left_click_down(self):
-        if not self.mouse.simulated:
-            from makcu import MouseButton
-            try:
-                return self.mouse.is_pressed(MouseButton.LEFT)
-            except AttributeError:
-                pass
-        import ctypes
-        return (ctypes.windll.user32.GetAsyncKeyState(0x01) & 0x8000) != 0
-
     def vision_loop(self):
         import time
         last_target_log = 0
@@ -108,39 +73,36 @@ class Colorbot:
                 fps_start = now
 
             dx, dy, found = self.vision.process(frame)
-            trigger_active = self.is_trigger_active()
-            is_new_click = trigger_active and not self.last_left
-            left_click_down = self.is_left_click_down()
-            
-            self.last_left = trigger_active
 
+            # Retrieve click_pending debug flag and trigger state from sender thread
+            click_pending = False
+            trigger_active_shared = False
             with self.state.lock:
-                self.state.trigger_active = trigger_active
-                self.state.left_click_down = left_click_down
                 self.state.has_target = found
+                trigger_active_shared = self.state.trigger_active
                 
                 if found:
                     self.state.dx = dx
                     self.state.dy = dy
                     
-                    if is_new_click:
-                        self.state.magnet_fire = True
-                        
                     if now - last_target_log >= 1.5:
-                        status_str = "ACTIVE (Tracking)" if trigger_active else "IDLE"
+                        status_str = "ACTIVE (Tracking)" if trigger_active_shared else "IDLE"
                         print(f"[Vision] Target spotted at (dx={dx:.1f}, dy={dy:.1f}) | Trigger={status_str}")
                         last_target_log = now
                 else:
                     self.state.dx = 0.0
                     self.state.dy = 0.0
-                    self.state.magnet_fire = False
-                    
-                    if is_new_click:
-                        import cv2
-                        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-                        avg_h = hsv[:, :, 0].mean()
-                        avg_s = hsv[:, :, 1].mean()
-                        avg_v = hsv[:, :, 2].mean()
-                        print(f"[Debug] Click detected! No target found. Avg HSV in grabzone: H={avg_h:.1f}, S={avg_s:.1f}, V={avg_v:.1f}")
+
+                if self.state.click_pending:
+                    click_pending = True
+                    self.state.click_pending = False
+
+            if click_pending:
+                import cv2
+                hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+                avg_h = hsv[:, :, 0].mean()
+                avg_s = hsv[:, :, 1].mean()
+                avg_v = hsv[:, :, 2].mean()
+                print(f"[Debug] Click detected! No target found. Avg HSV in grabzone: H={avg_h:.1f}, S={avg_s:.1f}, V={avg_v:.1f}")
 
             time.sleep(0.001)
