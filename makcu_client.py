@@ -4,6 +4,7 @@ from makcu import create_controller, MouseButton
 class PicoMouse:
     def __init__(self):
         self.simulated = False
+        self.left_locked = False
 
         try:
             self.controller = create_controller(debug=False)
@@ -14,6 +15,15 @@ class PicoMouse:
             self.simulated = True
             self.controller = None
             print(f"[-] PicoMouse: Hardware not found or failed to connect ({e}). Running in SIMULATED mode.")
+
+    def lock_left(self, lock=True):
+        if self.simulated:
+            return
+        try:
+            self.controller.lock_left(lock)
+            self.left_locked = lock
+        except Exception as e:
+            print(f"[-] PicoMouse: Failed to lock/unlock left click ({e})")
 
     def move(self, x, y):
         if self.simulated:
@@ -41,4 +51,5 @@ class PicoMouse:
 
     def close(self):
         if not self.simulated:
+            self.lock_left(False)
             self.controller.disconnect()

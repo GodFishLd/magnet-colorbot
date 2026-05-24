@@ -34,6 +34,9 @@ class Colorbot:
 
     def start(self):
         self.running = True
+        if self.trigger_key == "0x01" and not self.mouse.simulated:
+            self.mouse.lock_left(True)
+            print("[+] PicoMouse left click suppressed (locked) at firmware level.")
 
         threading.Thread(target=self.vision_loop, daemon=True).start()
         threading.Thread(target=self.sender.run, daemon=True).start()

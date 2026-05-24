@@ -92,10 +92,9 @@ class Sender:
                 # Deliver movement
                 self.mouse.move(mx, my)
                 
-                # If trigger key is not left click (e.g. it is Auto, Shift, or Right Click),
-                # the bot must handle the shooting itself. We add a short delay to let the
-                # mouse arrive before clicking.
-                if self.trigger_key != "0x01":
+                # If trigger key is not left click, or if left click is suppressed/locked
+                # at the firmware level, the bot must send the click command to fire.
+                if self.trigger_key != "0x01" or getattr(self.mouse, "left_locked", False):
                     time.sleep(0.005)
                     self.mouse.click()
                 
