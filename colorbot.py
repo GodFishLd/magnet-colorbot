@@ -10,7 +10,7 @@ from sender import Sender
 
 class Colorbot:
 
-    def __init__(self, ndi_source_name, grabzone, res, color_range, trigger_key="0x01"):  # <-- Parameters updated
+    def __init__(self, ndi_source_name, grabzone, res, color_range, trigger_key="0x01", y_offset=9):  # <-- Parameters updated
 
         self.state = MagnetState()
 
@@ -20,7 +20,7 @@ class Colorbot:
             grabzone
         )
 
-        self.vision = Vision(grabzone, color_range)
+        self.vision = Vision(grabzone, color_range, y_offset=y_offset)
         self.mouse = PicoMouse()
         self.sender = Sender(self.state, self.mouse)
 

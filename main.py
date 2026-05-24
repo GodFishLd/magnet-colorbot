@@ -46,6 +46,7 @@ def main():
         }
         
         trigger_key = os.environ.get("TRIGGER_KEY", "0x01")
+        y_offset = int(os.environ.get("Y_OFFSET", "9"))
 
         print(f"[*] Initializing Colorbot...")
         print(f"    - NDI Source: {ndi_source}")
@@ -53,13 +54,15 @@ def main():
         print(f"    - Resolution: {resolution}")
         print(f"    - Colors:     Lower={color_lower}, Upper={color_upper}")
         print(f"    - Trigger Key: {trigger_key}")
+        print(f"    - Y Offset:    {y_offset}")
 
         bot = Colorbot(
             ndi_source_name=ndi_source,
             grabzone=grabzone,
             res=resolution,
             color_range=color_range,
-            trigger_key=trigger_key
+            trigger_key=trigger_key,
+            y_offset=y_offset
         )
 
         bot.wait_for_connection()
