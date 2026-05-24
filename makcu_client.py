@@ -9,17 +9,28 @@ class PicoMouse:
             self.controller = create_controller(debug=False)
             if not self.controller.is_connected():
                 self.controller.connect()
-        except:
+            print("[+] PicoMouse: Successfully connected to Pico USB hardware.")
+        except Exception as e:
             self.simulated = True
             self.controller = None
+            print(f"[-] PicoMouse: Hardware not found or failed to connect ({e}). Running in SIMULATED mode.")
 
     def move(self, x, y):
         if self.simulated:
+            import ctypes
+            # MOUSEEVENTF_MOVE = 0x0001
+            ctypes.windll.user32.mouse_event(0x0001, int(x), int(y), 0, 0)
             return
         self.controller.move(int(x), int(y))
 
     def click(self, button=MouseButton.LEFT):
         if self.simulated:
+            import ctypes
+            import time
+            # MOUSEEVENTF_LEFTDOWN = 0x0002, MOUSEEVENTF_LEFTUP = 0x0004
+            ctypes.windll.user32.mouse_event(0x0002, 0, 0, 0, 0)
+            time.sleep(0.01)
+            ctypes.windll.user32.mouse_event(0x0004, 0, 0, 0, 0)
             return
         self.controller.click(button)
 

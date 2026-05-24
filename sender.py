@@ -39,6 +39,13 @@ class Sender:
                 last_y = 0
 
             if fire:
+                import time
+                now = time.time()
+                if not hasattr(self, 'last_log_time'):
+                    self.last_log_time = 0
+                if now - self.last_log_time >= 1.5:
+                    print(f"[Sender] Command sent -> move(dx={last_x:.1f}, dy={last_y:.1f}), click() | simulated={self.mouse.simulated}")
+                    self.last_log_time = now
                 self.mouse.move(last_x, last_y)
                 self.mouse.click()
 

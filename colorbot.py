@@ -10,7 +10,7 @@ from sender import Sender
 
 class Colorbot:
 
-    def __init__(self, ndi_source_name, grabzone, res, color_range):  # <-- Parameters updated
+    def __init__(self, ndi_source_name, grabzone, res, color_range, trigger_key="0x01"):  # <-- Parameters updated
 
         self.state = MagnetState()
 
@@ -26,6 +26,7 @@ class Colorbot:
 
         self.running = False
         self.last_left = False
+        self.trigger_key = trigger_key
 
     def wait_for_connection(self):
         self.grabber.wait_for_connection()
@@ -37,24 +38,83 @@ class Colorbot:
         threading.Thread(target=self.sender.run, daemon=True).start()
         print("[+] Colorbot threads successfully started!")
 
+    def is_trigger_active(self):
+        if self.trigger_key == "auto":
+            return True
+
+        try:
+            vk_code = int(self.trigger_key, 16) if self.trigger_key.startswith("0x") else int(self.trigger_key)
+        except ValueError:
+            vk_code = 0x01  # Default to Left Click
+
+        # If it's a left/right click, we can check the physical Pico mouse button state
+        # if the hardware is connected.
+        if not self.mouse.simulated:
+            from makcu import MouseButton
+            if vk_code == 0x01:
+                return self.mouse.is_pressed(MouseButton.LEFT)
+            elif vk_code == 0x02:
+                try:
+                    return self.mouse.is_pressed(MouseButton.RIGHT)
+                except AttributeError:
+                    pass
+
+        # Fallback to checking Windows virtual key state (works globally on Windows)
+        import ctypes
+        return (ctypes.windll.user32.GetAsyncKeyState(vk_code) & 0x8000) != 0
+
     def vision_loop(self):
+        import time
+        last_target_log = 0
+        frame_count = 0
+        fps_start = time.time()
 
         while self.running:
-
             frame = self.grabber.get_screen()
 
             # IMPORTANT ADDITION (NEW SAFETY)
             if frame is None:
                 continue
 
+            frame_count += 1
+            now = time.time()
+            if now - fps_start >= 5.0:
+                fps = frame_count / (now - fps_start)
+                print(f"[Vision] Capture rate: {fps:.1f} FPS")
+                frame_count = 0
+                fps_start = now
+
             dx, dy, found = self.vision.process(frame)
+            trigger_active = self.is_trigger_active()
+
+            # Detect edge transition: from not-pressed to pressed (click down)
+            if self.trigger_key == "auto":
+                click_triggered = True
+            else:
+                click_triggered = trigger_active and not self.last_left
+            
+            self.last_left = trigger_active
 
             with self.state.lock:
                 if found:
                     self.state.dx = dx
                     self.state.dy = dy
                     self.state.has_target = True
+                    
+                    if click_triggered:
+                        self.state.magnet_fire = True
+                        if now - last_target_log >= 1.0:
+                            print(f"[Vision] Target spotted at (dx={dx:.1f}, dy={dy:.1f}) | CLICK DETECTED -> Position correction activated")
+                            last_target_log = now
+                    else:
+                        self.state.magnet_fire = False
+                        if now - last_target_log >= 2.0:
+                            print(f"[Vision] Target spotted at (dx={dx:.1f}, dy={dy:.1f}) | Waiting for new click...")
+                            last_target_log = now
                 else:
                     self.state.has_target = False
                     self.state.dx = 0
                     self.state.dy = 0
+                    self.state.magnet_fire = False
+
+            time.sleep(0.001)
