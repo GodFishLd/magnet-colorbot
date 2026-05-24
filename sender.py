@@ -18,7 +18,12 @@ class Sender:
         tick = 0.007
 
         # Calculate sensitivity coefficients (scaling based on in-game sensitivity and resolution)
-        res_w, res_h = self.res
+        import ctypes
+        res_w = ctypes.windll.user32.GetSystemMetrics(0)
+        res_h = ctypes.windll.user32.GetSystemMetrics(1)
+        if res_w == 0 or res_h == 0:
+            res_w, res_h = self.res
+
         sensitivity_x = 1.0 / self.sensitivity / (res_w / 1920.0) * 1.08
         sensitivity_y = 1.0 / self.sensitivity / (res_h / 1080.0) * 1.08
 
