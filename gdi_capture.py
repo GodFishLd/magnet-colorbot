@@ -29,6 +29,7 @@ class NDIScreenCapture:
         self.screen = None
         self.running = True
         self.ndi_source_name = ndi_source_name
+        self.frame_counter = 0
 
         if NDI_BACKEND == "ndi-python":
             recv_create = ndi.RecvCreateV3()
@@ -100,6 +101,7 @@ class NDIScreenCapture:
 
                     if not (x1 < 0 or y1 < 0 or x2 > w or y2 > h):
                         self.screen = img[y1:y2, x1:x2]
+                        self.frame_counter += 1
 
                     ndi.recv_free_video_v2(self.ndi_recv, v)
                 elif t == ndi.FRAME_TYPE_AUDIO:
@@ -134,6 +136,7 @@ class NDIScreenCapture:
                     continue
 
                 self.screen = img[y1:y2, x1:x2]
+                self.frame_counter += 1
 
             except Exception:
                 continue

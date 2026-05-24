@@ -26,6 +26,7 @@ class Colorbot:
 
         self.running = False
         self.last_left = False
+        self.click_pending = False
         self.trigger_key = trigger_key
 
     def wait_for_connection(self):
@@ -68,13 +69,22 @@ class Colorbot:
         last_target_log = 0
         frame_count = 0
         fps_start = time.time()
+        last_frame_counter = -1
 
         while self.running:
+            current_counter = self.grabber.frame_counter
+            if current_counter == last_frame_counter:
+                time.sleep(0.001)
+                continue
+
             frame = self.grabber.get_screen()
 
             # IMPORTANT ADDITION (NEW SAFETY)
             if frame is None:
+                time.sleep(0.001)
                 continue
+
+            last_frame_counter = current_counter
 
             frame_count += 1
             now = time.time()
@@ -86,12 +96,22 @@ class Colorbot:
 
             dx, dy, found = self.vision.process(frame)
             trigger_active = self.is_trigger_active()
+            is_new_click = trigger_active and not self.last_left
 
             # Detect edge transition: from not-pressed to pressed (click down)
             if self.trigger_key == "auto":
                 click_triggered = True
             else:
-                click_triggered = trigger_active and not self.last_left
+                # If a new click is registered, mark it as pending
+                if is_new_click:
+                    self.click_pending = True
+                
+                # If the trigger key is released, clear the pending click
+                if not trigger_active:
+                    self.click_pending = False
+                
+                # We trigger correction if a click is pending
+                click_triggered = self.click_pending
             
             self.last_left = trigger_active
 
@@ -103,6 +123,9 @@ class Colorbot:
                     
                     if click_triggered:
                         self.state.magnet_fire = True
+                        # Consume the pending click
+                        self.click_pending = False
+                        
                         if now - last_target_log >= 1.0:
                             print(f"[Vision] Target spotted at (dx={dx:.1f}, dy={dy:.1f}) | CLICK DETECTED -> Position correction activated")
                             last_target_log = now
@@ -116,7 +139,7 @@ class Colorbot:
                     self.state.dx = 0
                     self.state.dy = 0
                     self.state.magnet_fire = False
-                    if click_triggered:
+                    if is_new_click:
                         import cv2
                         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
                         avg_h = hsv[:, :, 0].mean()
