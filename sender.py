@@ -54,6 +54,9 @@ class Sender:
         # Calculate sensitivity coefficients (scaling based on in-game sensitivity and resolution)
         res_w, res_h = self.res
         if self.grabber is not None:
+            print("[Sender] Waiting for first NDI frame to determine resolution...")
+            while self.running and self.grabber.frame_counter == 0:
+                time.sleep(0.005)
             res_w = self.grabber.width
             res_h = self.grabber.height
         
@@ -65,6 +68,7 @@ class Sender:
         left_start = None
         was_left_down = False
         was_trigger_active = False
+        last_flick_time = 0.0
 
         while self.running:
             start = time.perf_counter()
@@ -88,8 +92,13 @@ class Sender:
                 dy = self.state.dy
                 has_target = self.state.has_target
 
-            # Determine flick-on-click trigger
-            fire = is_new_click and has_target
+            # Determine flick-on-click trigger with 150ms debounce to prevent double-flicks
+            fire = False
+            if is_new_click and has_target:
+                now = time.perf_counter()
+                if now - last_flick_time > 0.15:
+                    fire = True
+                    last_flick_time = now
 
             # Notify vision loop to print HSV debug values if user clicks but misses target
             if is_new_click and not has_target:
