@@ -49,6 +49,7 @@ def main():
         y_offset = int(os.environ.get("Y_OFFSET", "9"))
         sensitivity = float(os.environ.get("SENSITIVITY", "0.52"))
         smoothing = float(os.environ.get("SMOOTHING", "0.5"))
+        mode = int(os.environ.get("MODE", "2"))
 
         print(f"[*] Initializing Colorbot...")
         print(f"    - NDI Source:   {ndi_source}")
@@ -59,6 +60,7 @@ def main():
         print(f"    - Y Offset:     {y_offset}")
         print(f"    - Sensitivity:  {sensitivity}")
         print(f"    - Smoothing:    {smoothing}")
+        print(f"    - Mode:         {mode}")
 
         bot = Colorbot(
             ndi_source_name=ndi_source,
@@ -68,7 +70,8 @@ def main():
             trigger_key=trigger_key,
             y_offset=y_offset,
             sensitivity=sensitivity,
-            smoothing=smoothing
+            smoothing=smoothing,
+            mode=mode
         )
 
         bot.wait_for_connection()

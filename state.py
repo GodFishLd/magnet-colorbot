@@ -9,4 +9,6 @@ class MagnetState:
         self.dy = 0.0
         self.has_target = False
 
+        self.trigger_active = False
+        self.left_click_down = False
         self.magnet_fire = False
