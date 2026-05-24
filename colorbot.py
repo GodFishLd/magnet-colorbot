@@ -116,5 +116,12 @@ class Colorbot:
                     self.state.dx = 0
                     self.state.dy = 0
                     self.state.magnet_fire = False
+                    if click_triggered:
+                        import cv2
+                        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+                        avg_h = hsv[:, :, 0].mean()
+                        avg_s = hsv[:, :, 1].mean()
+                        avg_v = hsv[:, :, 2].mean()
+                        print(f"[Debug] Click detected! No target found. Avg HSV in grabzone: H={avg_h:.1f}, S={avg_s:.1f}, V={avg_v:.1f}. Target range: Lower={self.vision.lower}, Upper={self.vision.upper}")
 
             time.sleep(0.001)
