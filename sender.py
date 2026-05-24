@@ -3,10 +3,13 @@ import time
 
 class Sender:
 
-    def __init__(self, state, mouse):
+    def __init__(self, state, mouse, res, sensitivity=1.0, smoothing=0.5):
         self.state = state
         self.mouse = mouse
         self.running = True
+        self.res = res
+        self.sensitivity = sensitivity
+        self.smoothing = smoothing
 
     def run(self):
 
@@ -14,6 +17,11 @@ class Sender:
         last_y = 0.0
 
         tick = 0.007
+
+        # Calculate sensitivity coefficients (scaling based on in-game sensitivity and resolution)
+        res_w, res_h = self.res
+        sensitivity_x = 1.0 / self.sensitivity / (res_w / 1920.0) * 1.08
+        sensitivity_y = 1.0 / self.sensitivity / (res_h / 1080.0) * 1.08
 
         while self.running:
             start = time.perf_counter()
@@ -28,10 +36,14 @@ class Sender:
                 fire = self.state.magnet_fire
                 self.state.magnet_fire = False
 
+            # Scale target movements based on game sensitivity, resolution, and smoothing
+            v_x = dx * sensitivity_x * self.smoothing
+            v_y = dy * sensitivity_y * self.smoothing
+
             alpha = 0.4
 
-            last_x = last_x * (1 - alpha) + dx * alpha
-            last_y = last_y * (1 - alpha) + dy * alpha
+            last_x = last_x * (1 - alpha) + v_x * alpha
+            last_y = last_y * (1 - alpha) + v_y * alpha
 
             if abs(last_x) < 0.5:
                 last_x = 0
